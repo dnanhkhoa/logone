@@ -13,7 +13,6 @@ __all__ = ['levels', 'get_logger', 'logger', 'add_handler', 'remove_handler',
 # Information
 __author__ = "Duong Nguyen Anh Khoa <dnanhkhoa@live.com>"
 __status__ = "production"
-__version__ = "0.1.1"
 __date__ = "15 January 2018"
 
 # Private variables

@@ -4,8 +4,6 @@ import os
 
 from setuptools import setup
 
-from logone import __version__
-
 
 def readme(file_name):
     if os.path.isfile(file_name):
@@ -15,7 +13,7 @@ def readme(file_name):
 
 
 setup(name='logone',
-      version=__version__,
+      version='0.1.5',
       description='A simple logger which supports for logging stdout and '
                   'stderr streams to console, file, and Loggly for Python',
       long_description=readme(file_name='README.md'),
