@@ -19,7 +19,7 @@ setup(name='logone',
       description='A simple logger which supports for logging stdout and '
                   'stderr streams to console, file, and Loggly for Python',
       long_description=readme(file_name='README.md'),
-      keywords=['logone', 'logger', 'logging', 'loggly', 'stream', 'log', 'file', 'stdout', 'stderr'],
+      keywords='logone logger logging loggly stream log file stdout stderr',
       url='https://github.com/dnanhkhoa/logone',
       author='Duong Nguyen Anh Khoa',
       author_email='dnanhkhoa@live.com',
