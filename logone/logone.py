@@ -66,7 +66,7 @@ class LogOne(object):
         # For handlers
         self.__file_handler = None
         self.__loggly_handler = None
-        self.__coloredlogs_handlers = self.logger.handlers.copy()
+        self.__coloredlogs_handlers = list(self.logger.handlers)
 
         # Inherit methods from Logger class
         self.name = self.logger.name
