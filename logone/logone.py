@@ -284,6 +284,26 @@ class StdOutWrapper(object):
     def __init__(self, logger, log_level=logging.INFO):
         self.__logger = logger
         self.__log_level = log_level
+        self.__buffer = StringIO()
+
+        if sys.version_info[:2] >= (3, 3):
+            def _write(buffer):
+                """
+                Write the given buffer to the temporary buffer.
+                """
+                self.__buffer.write(buffer)
+        else:
+            def _write(buffer):
+                """
+                Write the given buffer to log.
+                """
+                buffer = buffer.strip()
+                # Ignore the empty buffer
+                if len(buffer) > 0:
+                    # Flush messages after log() called
+                    self.__logger.log(level=self.__log_level, msg=buffer)
+
+        self.write = _write
 
     def update_log_level(self, log_level=logging.INFO):
         """
@@ -291,19 +311,16 @@ class StdOutWrapper(object):
         """
         self.__log_level = log_level
 
-    def write(self, buffer):
+    def flush(self):
         """
-        Write the given buffer to log.
+        Flush the buffer, if applicable.
         """
-        buffer = buffer.strip()
-        # Ignore the empty buffer
-        if len(buffer) > 0:
-            # Flush messages after log() called
-            self.__logger.log(level=self.__log_level, msg=buffer)
-
-    def flush(self, *args, **kwargs):
-        # No-op for wrapper
-        pass
+        if self.__buffer.tell() > 0:
+            # Write the buffer to log
+            self.__logger.log(level=self.__log_level, msg=self.__buffer.getvalue().strip())
+            # Remove the old buffer
+            self.__buffer.truncate(0)
+            self.__buffer.seek(0)
 
 
 class StdErrWrapper(object):
@@ -334,7 +351,7 @@ class StdErrWrapper(object):
         """
         if self.__buffer.tell() > 0:
             # Write the buffer to log
-            self.__logger.log(level=self.__log_level, msg=self.__buffer.getvalue())
+            self.__logger.log(level=self.__log_level, msg=self.__buffer.getvalue().strip())
             # Remove the old buffer
             self.__buffer.truncate(0)
             self.__buffer.seek(0)
