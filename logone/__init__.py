@@ -1,10 +1,21 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+from __future__ import print_function
+
+import sys
 import threading
 from logging import CRITICAL, FATAL, ERROR, WARNING, WARN, INFO, DEBUG, NOTSET
 
 from .logone import LogOne
 
+# Customize print function to support flushing stdout for Python 3
+if sys.version_info[:2] >= (3, 3):
+    import builtins
+    import functools
+
+    builtins.print = functools.partial(print, flush=True)
+
+# Export function
 __all__ = ['levels', 'get_logger', 'logger', 'add_handler', 'remove_handler',
            'add_filter', 'remove_filter', 'log', 'debug', 'info', 'warning',
            'error', 'exception', 'critical', 'set_level', 'disable_logger',
