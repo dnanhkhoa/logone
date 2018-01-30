@@ -20,6 +20,8 @@ colorama.init()
 _original_stdout = sys.stdout
 _original_stderr = sys.stderr
 
+_logone_src = os.path.normpath(os.path.dirname(os.path.abspath(__file__)))
+
 
 class LogOne(object):
     def __init__(self, logger_name,
@@ -116,7 +118,7 @@ class LogOne(object):
             if self.__stdout_wrapper:
                 self.__stdout_wrapper.update_log_level(log_level=log_level)
             else:
-                self.__stdout_wrapper = StdOutWrapper(logger=self.logger, log_level=log_level)
+                self.__stdout_wrapper = StdOutWrapper(logger=self, log_level=log_level)
 
             self.__stdout_stream = self.__stdout_wrapper
         else:
@@ -133,7 +135,7 @@ class LogOne(object):
             if self.__stderr_wrapper:
                 self.__stderr_wrapper.update_log_level(log_level=log_level)
             else:
-                self.__stderr_wrapper = StdErrWrapper(logger=self.logger, log_level=log_level)
+                self.__stderr_wrapper = StdErrWrapper(logger=self, log_level=log_level)
 
             self.__stderr_stream = self.__stderr_wrapper
         else:
@@ -232,6 +234,88 @@ class LogOne(object):
             self.remove_handler(hdlr=self.__loggly_handler)
             self.__loggly_handler = None
 
+    @staticmethod
+    def __find_caller(stack_info=False):
+        """
+        Find the stack frame of the caller so that we can note the source file name,
+        line number and function name.
+        """
+        frame = logging.currentframe()
+        # On some versions of IronPython, currentframe() returns None if
+        # IronPython isn't run with -X:Frames.
+        if frame is not None:
+            frame = frame.f_back
+
+        caller_info = '(unknown file)', 0, '(unknown function)', None
+
+        while hasattr(frame, 'f_code'):
+            co = frame.f_code
+            if _logone_src in os.path.normcase(co.co_filename):
+                frame = frame.f_back
+                continue
+
+            tb_info = None
+            if stack_info:
+                buffer = StringIO()
+                buffer.write('Traceback (most recent call last):\n')
+                traceback.print_stack(frame, file=buffer)
+                tb_info = buffer.getvalue().strip()
+                buffer.close()
+
+            caller_info = co.co_filename, frame.f_lineno, co.co_name, tb_info
+            break
+        return caller_info
+
+    def _log(self, level, msg, *args, **kwargs):
+        """
+        Log 'msg % args' with the integer severity 'level'.
+
+        To pass exception information, use the keyword argument exc_info with
+        a true value, e.g.
+
+        logger.log(level, "We have a %s", "mysterious problem", exc_info=1)
+        """
+        if not isinstance(level, int):
+            if logging.raiseExceptions:
+                raise TypeError('Level must be an integer!')
+            else:
+                return
+
+        if self.logger.isEnabledFor(level=level):
+            """
+            Low-level logging routine which creates a LogRecord and then calls
+            all the handlers of this logger to handle the record.
+            """
+            exc_info = kwargs.get('exc_info', None)
+            extra = kwargs.get('extra', None)
+            stack_info = kwargs.get('stack_info', False)
+            record_filter = kwargs.get('record_filter', None)
+
+            tb_info = None
+            if _logone_src:
+                # IronPython doesn't track Python frames, so findCaller raises an
+                # exception on some versions of IronPython. We trap it here so that
+                # IronPython can use logging.
+                try:
+                    fn, lno, func, tb_info = self.__find_caller(stack_info=stack_info)
+                except ValueError:  # pragma: no cover
+                    fn, lno, func = '(unknown file)', 0, '(unknown function)'
+            else:  # pragma: no cover
+                fn, lno, func = '(unknown file)', 0, '(unknown function)'
+
+            if exc_info:
+                if isinstance(exc_info, BaseException):
+                    exc_info = type(exc_info), exc_info, exc_info.__traceback__
+                elif not isinstance(exc_info, tuple):
+                    exc_info = sys.exc_info()
+
+            record = self.logger.makeRecord(self.name, level, fn, lno, msg, args,
+                                            exc_info, func, extra, tb_info)
+            if record_filter:
+                record = record_filter(record)
+
+            self.logger.handle(record=record)
+
     def __repr__(self):
         return self.logger.__repr__()
 
@@ -287,13 +371,13 @@ class StdOutWrapper(object):
         self.__buffer = StringIO()
 
         if sys.version_info[:2] >= (3, 3):
-            def _write(buffer):
+            def __write(buffer):
                 """
                 Write the given buffer to the temporary buffer.
                 """
                 self.__buffer.write(buffer)
         else:
-            def _write(buffer):
+            def __write(buffer):
                 """
                 Write the given buffer to log.
                 """
@@ -301,9 +385,10 @@ class StdOutWrapper(object):
                 # Ignore the empty buffer
                 if len(buffer) > 0:
                     # Flush messages after log() called
-                    self.__logger.log(level=self.__log_level, msg=buffer)
+                    # noinspection PyProtectedMember
+                    self.__logger._log(level=self.__log_level, msg=buffer)
 
-        self.write = _write
+        self.write = __write
 
     def update_log_level(self, log_level=logging.INFO):
         """
@@ -317,7 +402,8 @@ class StdOutWrapper(object):
         """
         if self.__buffer.tell() > 0:
             # Write the buffer to log
-            self.__logger.log(level=self.__log_level, msg=self.__buffer.getvalue().strip())
+            # noinspection PyProtectedMember
+            self.__logger._log(level=self.__log_level, msg=self.__buffer.getvalue().strip())
             # Remove the old buffer
             self.__buffer.truncate(0)
             self.__buffer.seek(0)
@@ -345,13 +431,23 @@ class StdErrWrapper(object):
         """
         self.__buffer.write(buffer)
 
+    @staticmethod
+    def __filter_record(record):
+        msg = record.msg
+        msg = msg.splitlines()[-1]
+        msg = msg.split(': ')[1:]
+        record.msg = ''.join(msg) + '\n' + record.msg
+        return record
+
     def flush(self):
         """
         Flush the buffer, if applicable.
         """
         if self.__buffer.tell() > 0:
             # Write the buffer to log
-            self.__logger.log(level=self.__log_level, msg=self.__buffer.getvalue().strip())
+            # noinspection PyProtectedMember
+            self.__logger._log(level=self.__log_level, msg=self.__buffer.getvalue().strip(),
+                               record_filter=StdErrWrapper.__filter_record)
             # Remove the old buffer
             self.__buffer.truncate(0)
             self.__buffer.seek(0)
