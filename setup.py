@@ -13,7 +13,7 @@ def readme(file_name):
 
 
 setup(name='logone',
-      version='0.1.6',
+      version='0.1.7',
       description='A simple logger which supports for logging stdout and '
                   'stderr streams to console, file, and Loggly for Python',
       long_description=readme(file_name='README.md'),
