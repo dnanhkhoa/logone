@@ -163,14 +163,20 @@ class LogOne(object):
                 assert file_name, 'File name is missing!'
 
                 # Create new TimedRotatingFileHandler instance
-                self.__file_handler = TimedRotatingFileHandler(filename=file_name,
-                                                               when=when,
-                                                               interval=interval,
-                                                               backupCount=backup_count,
-                                                               encoding='UTF-8',
-                                                               delay=delay,
-                                                               utc=utc,
-                                                               atTime=at_time)
+                kwargs = {
+                    'filename': file_name,
+                    'when': when,
+                    'interval': interval,
+                    'backupCount': backup_count,
+                    'encoding': 'UTF-8',
+                    'delay': delay,
+                    'utc': utc,
+                }
+
+                if sys.version_info[0] >= 3:
+                    kwargs['atTime'] = at_time
+
+                self.__file_handler = TimedRotatingFileHandler(**kwargs)
 
                 # Use this format for default case
                 if not log_format:
@@ -256,11 +262,11 @@ class LogOne(object):
 
             tb_info = None
             if stack_info:
-                buffer = StringIO()
-                buffer.write('Traceback (most recent call last):\n')
-                traceback.print_stack(frame, file=buffer)
-                tb_info = buffer.getvalue().strip()
-                buffer.close()
+                _buffer = StringIO()
+                _buffer.write('Traceback (most recent call last):\n')
+                traceback.print_stack(frame, file=_buffer)
+                tb_info = _buffer.getvalue().strip()
+                _buffer.close()
 
             caller_info = co.co_filename, frame.f_lineno, co.co_name, tb_info
             break
@@ -304,13 +310,24 @@ class LogOne(object):
                 fn, lno, func = '(unknown file)', 0, '(unknown function)'
 
             if exc_info:
-                if isinstance(exc_info, BaseException):
-                    exc_info = type(exc_info), exc_info, exc_info.__traceback__
-                elif not isinstance(exc_info, tuple):
-                    exc_info = sys.exc_info()
+                if sys.version_info[0] >= 3:
+                    if isinstance(exc_info, BaseException):
+                        # noinspection PyUnresolvedReferences
+                        exc_info = type(exc_info), exc_info, exc_info.__traceback__
+                    elif not isinstance(exc_info, tuple):
+                        exc_info = sys.exc_info()
+                else:
+                    if not isinstance(exc_info, tuple):
+                        exc_info = sys.exc_info()
 
-            record = self.logger.makeRecord(self.name, level, fn, lno, msg, args,
-                                            exc_info, func, extra, tb_info)
+            if sys.version_info[0] >= 3:
+                # noinspection PyArgumentList
+                record = self.logger.makeRecord(self.name, level, fn, lno, msg, args,
+                                                exc_info, func, extra, tb_info)
+            else:
+                record = self.logger.makeRecord(self.name, level, fn, lno, msg, args,
+                                                exc_info, func, extra)
+
             if record_filter:
                 record = record_filter(record)
 
@@ -331,14 +348,14 @@ class TimedRotatingFileHandler(handlers.TimedRotatingFileHandler):
     def _open(self):
         # Create directories to contain log files if necessary
         os.makedirs(os.path.dirname(self.baseFilename), exist_ok=True)
-        return super()._open()
+        return super(TimedRotatingFileHandler, self)._open()
 
 
 class LogglyHandler(logging.Handler):
     def __init__(self, token, tag):
         self.__loggly_api = 'https://logs-01.loggly.com/inputs/%s/tag/%s' % (token, tag)
 
-        super().__init__()
+        super(LogglyHandler, self).__init__()
 
     def emit(self, record):
         # Replace message with exception info
@@ -370,23 +387,23 @@ class StdOutWrapper(object):
         self.__log_level = log_level
         self.__buffer = StringIO()
 
-        if sys.version_info[:2] >= (3, 3):
-            def __write(buffer):
+        if sys.version_info[0] >= 3:
+            def __write(_buffer):
                 """
                 Write the given buffer to the temporary buffer.
                 """
-                self.__buffer.write(buffer)
+                self.__buffer.write(_buffer)
         else:
-            def __write(buffer):
+            def __write(_buffer):
                 """
                 Write the given buffer to log.
                 """
-                buffer = buffer.strip()
+                _buffer = _buffer.strip()
                 # Ignore the empty buffer
-                if len(buffer) > 0:
+                if len(_buffer) > 0:
                     # Flush messages after log() called
                     # noinspection PyProtectedMember
-                    self.__logger._log(level=self.__log_level, msg=buffer)
+                    self.__logger._log(level=self.__log_level, msg=_buffer)
 
         self.write = __write
 
@@ -419,17 +436,30 @@ class StdErrWrapper(object):
         self.__log_level = log_level
         self.__buffer = StringIO()
 
+        if sys.version_info[0] >= 3:
+            def __write(_buffer):
+                """
+                Write the given buffer to the temporary buffer.
+                """
+                self.__buffer.write(_buffer)
+        else:
+            def __write(_buffer):
+                """
+                Write the given buffer to log.
+                """
+                _buffer = _buffer.decode('UTF-8')
+                self.__buffer.write(_buffer)
+
+                if _buffer == '\n':
+                    self.flush()
+
+        self.write = __write
+
     def update_log_level(self, log_level=logging.ERROR):
         """
         Update the logging level of this stream.
         """
         self.__log_level = log_level
-
-    def write(self, buffer):
-        """
-        Write the given buffer to the temporary buffer.
-        """
-        self.__buffer.write(buffer)
 
     @staticmethod
     def __filter_record(record):
