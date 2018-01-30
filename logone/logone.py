@@ -259,7 +259,9 @@ class LogglyHandler(logging.Handler):
     def emit(self, record):
         # Replace message with exception info
         if record.exc_info:
-            record.msg = json.dumps(''.join(traceback.format_exception(*record.exc_info)))[1: -1]
+            msg = str(record.msg) + '\n'
+            msg += ''.join(traceback.format_exception(*record.exc_info))
+            record.msg = json.dumps(msg)[1: -1]
             record.exc_info = None
 
         # Format the record
