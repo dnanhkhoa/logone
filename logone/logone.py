@@ -346,7 +346,10 @@ class TimedRotatingFileHandler(handlers.TimedRotatingFileHandler):
 
     def _open(self):
         # Create directories to contain log files if necessary
-        os.makedirs(os.path.dirname(self.baseFilename), exist_ok=True)
+        try:
+            os.makedirs(os.path.dirname(self.baseFilename))
+        except OSError:
+            pass
         return super(TimedRotatingFileHandler, self)._open()
 
 
