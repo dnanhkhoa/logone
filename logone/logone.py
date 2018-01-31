@@ -249,7 +249,7 @@ class LogOne(object):
         frame = logging.currentframe()
         # On some versions of IronPython, currentframe() returns None if
         # IronPython isn't run with -X:Frames.
-        if frame is not None:
+        if frame:
             frame = frame.f_back
 
         caller_info = '(unknown file)', 0, '(unknown function)', None
@@ -262,11 +262,10 @@ class LogOne(object):
 
             tb_info = None
             if stack_info:
-                _buffer = StringIO()
-                _buffer.write('Traceback (most recent call last):\n')
-                traceback.print_stack(frame, file=_buffer)
-                tb_info = _buffer.getvalue().strip()
-                _buffer.close()
+                with StringIO() as _buffer:
+                    _buffer.write('Traceback (most recent call last):\n')
+                    traceback.print_stack(frame, file=_buffer)
+                    tb_info = _buffer.getvalue().strip()
 
             caller_info = co.co_filename, frame.f_lineno, co.co_name, tb_info
             break
@@ -463,7 +462,7 @@ class StdErrWrapper(object):
 
     @staticmethod
     def __filter_record(record):
-        msg = record.msg
+        msg = record.msg.strip()
         msg = msg.splitlines()[-1]
         msg = msg.split(': ')[1:]
         record.msg = ''.join(msg) + '\n' + record.msg
