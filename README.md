@@ -2,11 +2,11 @@
 
 ![Logone status](https://img.shields.io/pypi/v/logone.svg)
 
-A simple logger which supports for logging stdout and stderr streams to console, file, and Loggly for Python
+A simple logger which supports for logging stdout and stderr streams to console, file, and Loggly for Python.
 
 ## Core Features
 
-+ Simple and easy to use, and also compatible with `logging` package
++ Simple, easy-to-use, and also compatible with `logging` package
 
 + Supports for logging to console, file, and [Loggly](https://www.loggly.com) service in real-time
 
