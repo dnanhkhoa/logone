@@ -12,7 +12,7 @@ A simple logger which supports for logging stdout and stderr streams to console,
 
 + Redirects stdout or stderr stream to the logger as log messages
 
-+ Supports for color and formatting to terminal logging (based on `coloredlogs` package)
++ Supports for coloring and formatting to terminal logging (based on `coloredlogs` package)
 
 + Works with Python 2 and 3
 
