@@ -18,7 +18,9 @@ A simple logger which supports for logging stdout and stderr streams to console,
 
 ## Todo
 
-+ [ ] Supports for forwarding logs to Facebook Messenger, Slack, ...
++ [ ] Supports for forwarding logs to Telegram
++ [ ] Supports for forwarding logs to Slack
++ [ ] Supports for tracing input and output data of function
 
 ## Installation
 
