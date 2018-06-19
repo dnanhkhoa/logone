@@ -1,6 +1,7 @@
 # LogOne
 
-![Logone status](https://img.shields.io/pypi/v/logone.svg)
+[![PyPI](https://img.shields.io/pypi/v/logone.svg)]()
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/logone.svg)]()
 
 A simple logger which supports for logging stdout and stderr streams to console, file, and Loggly for Python.
 
