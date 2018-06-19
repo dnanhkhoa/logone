@@ -22,6 +22,7 @@ A simple logger which supports for logging stdout and stderr streams to console,
 + [ ] Supports for forwarding logs to Telegram
 + [ ] Supports for forwarding logs to Slack
 + [ ] Supports for tracing input and output data of function
++ [ ] Add unit tests
 
 ## Installation
 
